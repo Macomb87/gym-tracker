@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Gym Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root { --bg:#0b0f17; --card:#111827; --line:#1f2937; --text:#e5e7eb; --muted:#9ca3af; --accent:#f97316; --ok:#22c55e; --bad:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom:84px; }
+  main { max-width:640px; margin:0 auto; padding:16px; }
+  h2 { margin:4px 0 10px; font-size:22px; } h3 { margin:0 0 4px; font-size:16px; }
+  small, .note { color:var(--muted); font-size:13px; } .note { display:block; margin-top:8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .sport { border-color:#1d4ed8; background:#0c1a3a; }
+  .wk-row { display:grid; grid-template-columns:44px 1fr 24px; gap:6px; padding:7px 8px; border-radius:8px; }
+  .wk-row.today { background:#7c2d12; }
+  .pain { display:grid; grid-template-columns:repeat(11, 1fr); gap:3px; margin-top:6px; }
+  .pain button { padding:9px 0; } .pain .on { background:var(--accent); color:#111; font-weight:700; }
+  .rot { display:flex; justify-content:space-between; align-items:center; gap:8px; border-color:#7c2d12; }
+  .tag { background:var(--accent); color:#111; border-radius:6px; padding:1px 7px; font-size:13px; font-weight:700; vertical-align:middle; }
+  .eq { display:inline-block; background:#1e3a5f; color:#bae6fd; border-radius:6px; padding:1px 7px; font-size:12px; text-transform:capitalize; }
+  button, .btn { font:inherit; color:var(--text); background:var(--line); border:0; border-radius:10px; padding:10px 14px; cursor:pointer; }
+  .big { width:100%; background:var(--accent); color:#111; font-weight:700; font-size:17px; padding:14px; margin-top:12px; }
+  .ghost { background:transparent; border:1px solid var(--line); }
+  .sm { padding:6px 10px; font-size:13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  input, select { font:inherit; color:var(--text); background:#0b1220; border:1px solid var(--line); border-radius:8px; padding:8px; }
+  select { width:100%; margin:6px 0 10px; }
+  .thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px; }
+  .thumbs figure { margin:0; } .thumbs img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; background:#fff; }
+  .thumbs figcaption { font-size:12px; color:var(--muted); margin-top:2px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
+  .tile b { display:block; font-size:22px; }
+  .up { color:var(--ok); font-weight:600; } .down { color:var(--bad); font-weight:600; }
+  .wk-head, .between { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .ex-top { display:flex; gap:12px; margin-bottom:8px; } .ex-top small { display:block; }
+  .thumb { width:96px; height:72px; object-fit:cover; border-radius:8px; background:#fff; flex-shrink:0; cursor:zoom-in; }
+  .thumb.sm { width:64px; height:48px; }
+  .last { color:#fdba74; }
+  .set { display:flex; align-items:center; gap:6px; padding:6px; border-radius:10px; }
+  .set > span { width:20px; color:var(--muted); text-align:center; }
+  .set input { width:72px; text-align:center; }
+  .set.done { background:#052e16; } .set.done .chk { background:var(--ok); color:#052e16; }
+  .chk { margin-left:auto; width:44px; font-weight:700; }
+  .hist-ex { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-top:1px solid var(--line); }
+  .hist-ex small { text-align:right; }
+  .sum { margin:4px 0 10px; }
+  .seg { display:flex; gap:6px; margin-bottom:12px; } .seg button { flex:1; } .seg .on { background:var(--accent); color:#111; font-weight:700; }
+  .dayname { font-size:18px; font-weight:700; width:100%; margin-bottom:8px; }
+  .prog-ex { display:flex; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  .prog-ex input { width:56px; padding:4px; text-align:center; }
+  .grow { flex:1; min-width:0; } .btns { display:flex; gap:4px; } .btns button { padding:6px 9px; }
+  .rot input { width:60px; }
+  label input[type=number] { width:60px; }
+  .empty { text-align:center; color:var(--muted); padding:60px 20px; }
+  nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  nav button { flex:1; background:none; border-radius:0; padding:10px 0 12px; font-size:12px; color:var(--muted); }
+  nav button span { display:block; font-size:20px; } nav button.on { color:var(--accent); }
+  #modal { position:fixed; inset:0; background:#000a; display:flex; align-items:flex-end; justify-content:center; z-index:10; }
+  #modal[hidden] { display:none; }
+  .sheet { background:var(--card); width:100%; max-width:640px; max-height:88vh; overflow:auto; border-radius:16px 16px 0 0; padding:16px; }
+  .sheet-head { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:8px; } .sheet-head input { flex:1; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; } .pair img { width:100%; border-radius:8px; background:#fff; }
+  .pick { display:flex; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .pick img { width:72px; height:54px; object-fit:cover; border-radius:6px; background:#fff; } .pick small { display:block; text-transform:capitalize; }
+  #toast { position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--ok); color:#052e16; font-weight:600; padding:10px 16px; border-radius:10px; opacity:0; transition:opacity .3s; pointer-events:none; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<main id="main"></main>
+<nav>
+  <button data-view="today"><span>🏋️</span>Workout</button>
+  <button data-view="history"><span>📅</span>History</button>
+  <button data-view="progress"><span>📈</span>Progress</button>
+  <button data-view="program"><span>📋</span>Program</button>
+</nav>
+<div id="modal" hidden></div>
+<div id="toast"></div>
+<script src="chart.umd.min.js"></script>
+<script src="exercises.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
