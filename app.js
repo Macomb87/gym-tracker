@@ -14,9 +14,10 @@ const ex = (id, sets, reps) => ({ id, sets, reps });
 const sh = (id, sets, reps) => ({ ...ex(id, sets, reps), sh: true });
 const NEUTRAL_PRESS = 'Dumbbell_Bench_Press_with_Neutral_Grip', PULLDOWN = 'Close-Grip_Front_Lat_Pulldown';
 const DEFAULT_PROGRAM = {
-  v: 6, rotateDays: 14, flip: 0,
-  // Mon..Sun → index into days (-1 = no gym). Basketball on Wednesday, legs on Saturday, Sunday is rest.
-  week: [0, 1, -1, 0, 1, 2, -1],
+  v: 7, rotateDays: 14, flip: 0,
+  // Mon..Sun → index into days (-1 = no gym). Basketball on Wednesday, Saturday is rest, legs on Sunday
+  // (in kid weeks Sunday's legs move to Saturday, see scheduled()).
+  week: [0, 1, -1, 0, 1, -1, 2],
   sports: [{ name: 'Basketball', weekday: 3 }],
   days: [
     { name: 'Push',
@@ -35,6 +36,7 @@ const CARDIO_WEEK_GOAL = 150; // minutes; 150–300 min/week of moderate cardio 
 const CARDIO = ['Treadmill', 'Bike', 'Elliptical', 'Rower', 'Stairs', 'Walk', 'Other'];
 
 let S = load();
+let peek = null; // date of the week row opened to show its exercises
 let view = 'today', progVar = 'A', progEx = null, charts = [], pickCb = null;
 
 function load() {
@@ -72,6 +74,8 @@ const name = id => EX[id]?.name ?? id;
 const img = (id, n = 0) => `${IMG}${encodeURIComponent(id)}/${n}.jpg`;
 const setsText = sets => sets.map(x => `${x.kg}×${x.reps}`).join(' · ');
 const empty = msg => `<div class="empty">${msg}</div>`;
+const thumbs = list => `<div class="thumbs">${list.map(e => `<figure><img loading="lazy" crossorigin="anonymous" src="${img(e.id)}" alt="" data-act="info" data-id="${esc(e.id)}">
+  <figcaption>${e.sh ? '🩹 ' : ''}${esc(name(e.id))}</figcaption></figure>`).join('')}</div>`;
 
 // Last sets of an exercise, preferring the same day (heavy and volume days use different weights).
 function lastSets(id, day) {
@@ -97,8 +101,8 @@ const estMins = list => Math.round(5 + sum(list.map(e => e.sets)) * 2.5);
 // Fixed: 30 min after weights, 45 min on cardio-only days, so no visit is longer than ~1 h.
 const cardioTarget = only => only ? '45' : '30';
 
-function rotation() {
-  const p = S.program, d = Math.max(0, daysBetween(p.startDate, today()));
+function rotation(ds = today()) {
+  const p = S.program, d = Math.max(0, daysBetween(p.startDate, ds));
   const block = Math.floor(d / p.rotateDays);
   return { variant: (block + p.flip) % 2 ? 'B' : 'A', left: p.rotateDays - d % p.rotateDays, block: block + 1 };
 }
@@ -141,7 +145,7 @@ function weekPlan() {
     const ds = addDays(ws, k), sport = p.sports.find(sp => sportOn(sp, ds));
     const di = ds === today() ? pl.day : scheduled(k, ds);
     const what = isKidWeek(ds) && k === 6 ? '👨‍👧 Kid day' : p.days[di] ? p.days[di].name : '😴 Rest';
-    return { label, ds, what: !sport ? what : what === '😴 Rest' ? `🏅 ${sport.name}` : `${what} · 🏅 ${sport.name}`, done: S.sessions.some(s => s.date === ds) };
+    return { label, ds, day: what === p.days[di]?.name && p.days[di].A.length ? di : -1, what: !sport ? what : what === '😴 Rest' ? `🏅 ${sport.name}` : `${what} · 🏅 ${sport.name}`, done: S.sessions.some(s => s.date === ds) };
   });
 }
 const when = n => n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
@@ -169,7 +173,7 @@ function todayView() {
   return `
   <div class="card rot"><div><b>Variant ${r.variant}</b> · block ${r.block}</div>
     <small>Switches to ${r.variant === 'A' ? 'B' : 'A'} in ${r.left} day${r.left === 1 ? '' : 's'}</small></div>
-  ${short && !isKidDay() ? `<div class="card sport">👨‍👧 <b>Kid week</b>: no gym on Sunday.</div>` : ''}
+  ${short && !isKidDay() ? `<div class="card sport">👨‍👧 <b>Kid week</b>: no gym on Sunday, so Sunday's workout moves to Saturday.</div>` : ''}
   ${pl.sport && pl.sport.inDays > 0 ? `<div class="card sport">🏅 <b>${esc(pl.sport.name)} ${when(pl.sport.inDays)}</b> · no leg training until after it.
     ${pl.skipped !== null ? `<br><small>${esc(p.days[pl.skipped].name)} moved, doing ${esc(day.name)} instead.</small>` : ''}</div>` : ''}
   ${pain >= 6 ? `<div class="card sport">🩹 <b>Shoulder pain was ${pain}/10</b> last time. Skip the 🩹 exercises today and get the shoulder checked by a physio.</div>`
@@ -184,13 +188,14 @@ function todayView() {
     <small>Today</small>
     <h2>${esc(day.name)} <span class="tag">${r.variant}</span></h2>
     ${list.length ? `<p><small>⏱ ~${estMins(list)} min weights + ${cardioTarget(false)} min cardio · 🩹 = shoulder exercise, keep it light</small></p>
-    <div class="thumbs">${list.map(e => `<figure><img loading="lazy" crossorigin="anonymous" src="${img(e.id)}" alt="" data-act="info" data-id="${esc(e.id)}">
-      <figcaption>${e.sh ? '🩹 ' : ''}${esc(name(e.id))}</figcaption></figure>`).join('')}</div>`
+    ${thumbs(list)}`
     : `<p>⏱ ${cardioTarget(true)} min easy cardio: incline walk, bike or elliptical. Keep a pace where you can still talk, so you can keep going long enough to burn fat.</p>`}
     <button class="big" data-act="start" data-day="${n}">Start ${esc(day.name)}</button>
   </div>`}
   <div class="card"><h3>This week</h3>
-    ${weekPlan().map(w => `<div class="wk-row${w.ds === today() ? ' today' : ''}"><b>${w.label}</b><span>${esc(w.what)}</span><span>${w.done ? '✅' : ''}</span></div>`).join('')}</div>
+    ${weekPlan().map(w => `<div class="wk-row${w.ds === today() ? ' today' : ''}"${w.day >= 0 ? ` data-act="peek" data-ds="${w.ds}"` : ''}><b>${w.label}</b>
+      <span>${esc(w.what)}${w.day >= 0 ? (peek === w.ds ? ' ▾' : ' ›') : ''}</span><span>${w.done ? '✅' : ''}</span></div>
+      ${peek === w.ds && w.day >= 0 ? thumbs(trim(p.days[w.day][rotation(w.ds).variant], isKidWeek(w.ds))) : ''}`).join('')}</div>
   <div class="card"><h3>⚖️ Body weight</h3>
     <small>${lw ? `Last: <b>${lw.kg} kg</b> (${fmtDate(lw.date)})${S.weights.length > 1 ? ` · ${lw.kg <= fw.kg ? '−' : '+'}${r1(Math.abs(fw.kg - lw.kg))} kg since start` : ''}`
       : 'Weigh in once a week: same day, in the morning, before breakfast.'}</small>
@@ -414,7 +419,7 @@ function programView() {
     <label><input type="checkbox" id="kidon"${p.kid.on ? ' checked' : ''}> I have my kid every second week</label>
     ${p.kid.on ? `<select id="kidthis" style="margin-top:8px"><option value="0"${isKidWeek() ? ' selected' : ''}>This week is a kid week</option>
       <option value="7"${p.kid.anchor && !isKidWeek() ? ' selected' : ''}>Next week is a kid week</option></select>` : ''}
-    <small class="note">Kid weeks: no gym on Sunday.</small></div>
+    <small class="note">Kid weeks: no gym on Sunday, so Sunday's workout moves to Saturday.</small></div>
   ${p.days.map((d, di) => `<div class="card"><input class="dayname" data-dn="${di}" value="${esc(d.name)}">
     <label class="note"><input type="checkbox" data-legs="${di}"${d.legs ? ' checked' : ''}> Heavy on legs (keep away from sports)</label>
     ${d[progVar].map((e, ei) => `<div class="prog-ex">
@@ -484,6 +489,7 @@ document.addEventListener('click', ev => {
   const e = +b.dataset.e, s = +b.dataset.s, d = +b.dataset.d, i = +b.dataset.i;
   switch (act) {
     case 'start': startWorkout(+b.dataset.day); scrollTo(0, 0); break;
+    case 'peek': peek = peek === b.dataset.ds ? null : b.dataset.ds; break;
     case 'cancel': return ask('Cancel this workout? Nothing will be saved.', () => { S.active = null; });
     case 'yes': closeModal(); askCb(); break;
     case 'done': {
