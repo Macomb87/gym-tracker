@@ -202,7 +202,7 @@ function todayView() {
     <div class="row"><input type="number" inputmode="decimal" step="0.1" min="0" id="bw" placeholder="kg" style="flex:1"><button data-act="bw">Save</button></div></div>
   <div class="tiles">
     <div class="tile"><b>${thisWeek.length}</b><small>gym visits this week</small></div>
-    <div class="tile"><b class="${cardioWk >= CARDIO_WEEK_GOAL ? 'up' : ''}">${cardioWk} / ${CARDIO_WEEK_GOAL} min</b><small>cardio this week</small></div>
+    <div class="tile"><b class="${cardioWk >= CARDIO_WEEK_GOAL ? 'up' : ''}">${fmtMin(cardioWk)} / ${CARDIO_WEEK_GOAL} min</b><small>cardio this week</small></div>
   </div>`;
 }
 
@@ -265,20 +265,23 @@ function workoutView() {
     <div class="row"><select id="ctype" style="flex:1;margin:0">${CARDIO.map(c => `<option${c === a.cardio.type ? ' selected' : ''}>${c}</option>`).join('')}</select>
       <input type="number" inputmode="numeric" min="0" id="cmins" value="${a.cardio.mins}" placeholder="min" style="width:80px"></div>
     <div class="row" style="margin-top:8px;align-items:center">
-      ${a.cardio.t0 ? `<b id="ctime" style="flex:1;font-size:1.6em">${mmss(Date.now() - a.cardio.t0)}</b>` : `<small class="note" style="flex:1">Stopwatch: the minutes are added when you stop it.</small>`}
+      ${a.cardio.t0 || a.cardio.secs ? `<b id="ctime" style="flex:1;font-size:1.6em">${mmss(swMs(a.cardio))}</b>` : `<small class="note" style="flex:1">Stopwatch: saves the exact time (added to any minutes typed above).</small>`}
       <button data-act="ctimer">${a.cardio.t0 ? '■ Stop' : '▶ Start'}</button></div></div>
   <button class="big" data-act="finish">Finish workout</button>`;
 }
 
-// Cardio stopwatch: stopping adds the elapsed minutes to the cardio minutes.
+// Cardio stopwatch: start/stop like a real stopwatch, the exact seconds are kept in cardio.secs.
 // It stores the start time, so it keeps counting with the screen off or the app closed.
 function cardioTimer(a) {
   const c = a.cardio;
-  if (c.t0) { c.mins = (+c.mins || 0) + Math.max(1, Math.round((Date.now() - c.t0) / 60000)); delete c.t0; }
+  if (c.t0) { c.secs = Math.round(swMs(c) / 1000); delete c.t0; }
   else c.t0 = Date.now();
 }
+const swMs = c => (c.secs || 0) * 1000 + (c.t0 ? Date.now() - c.t0 : 0);
 const mmss = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
-setInterval(() => { const el = $('#ctime'); if (el && S.active?.cardio.t0) el.textContent = mmss(Date.now() - S.active.cardio.t0); }, 1000);
+// Cardio minutes can have seconds (from the stopwatch): 15.5667 → "15:34", 30 → "30".
+const fmtMin = m => { const s = Math.round(m * 60); return s % 60 ? mmss(s * 1000) : String(s / 60); };
+setInterval(() => { const el = $('#ctime'); if (el && S.active?.cardio.t0) el.textContent = mmss(swMs(S.active.cardio)); }, 1000);
 
 function finishWorkout() {
   const a = S.active;
@@ -286,7 +289,8 @@ function finishWorkout() {
   const exercises = a.exercises
     .map(e => ({ id: e.id, sets: e.sets.filter(x => x.done && x.reps > 0).map(x => ({ kg: +x.kg || 0, reps: +x.reps })) }))
     .filter(e => e.sets.length);
-  const cardio = a.cardio.mins > 0 ? { type: a.cardio.type, mins: +a.cardio.mins } : null;
+  const cmins = (+a.cardio.mins || 0) + (a.cardio.secs || 0) / 60;
+  const cardio = cmins > 0 ? { type: a.cardio.type, mins: cmins } : null;
   if (!exercises.length && !cardio) {
     return ask('No sets ticked ✓ and no cardio yet. Discard this workout?', () => { S.active = null; });
   }
@@ -304,7 +308,7 @@ function historyView() {
       <small>${fmtDate(s.date)} · ${s.mins} min · ${fmtKg(vol(s))}</small></div>
       <button class="ghost sm" data-act="del" data-id="${s.id}">Delete</button></div>
     ${s.exercises.map(e => `<div class="hist-ex"><b>${esc(name(e.id))}</b><small>${setsText(e.sets)}</small></div>`).join('')}
-    ${s.cardio ? `<div class="hist-ex"><b>🏃 ${esc(s.cardio.type)}</b><small>${s.cardio.mins} min</small></div>` : ''}
+    ${s.cardio ? `<div class="hist-ex"><b>🏃 ${esc(s.cardio.type)}</b><small>${fmtMin(s.cardio.mins)} min</small></div>` : ''}
   </div>`).join('');
 }
 
@@ -342,7 +346,7 @@ function progressView() {
     <div class="tile"><b>${S.sessions.length}</b><small>workouts total</small></div>
     <div class="tile"><b>${tw.length}</b><small>workouts this week</small></div>
     <div class="tile"><b>${fmtKg(tv)}</b><small>this week${lv ? ` · <span class="${tv >= lv ? 'up' : 'down'}">${tv >= lv ? '▲' : '▼'} ${Math.abs(Math.round((tv / lv - 1) * 100))}%</span> vs last` : ''}</small></div>
-    <div class="tile"><b>${sum(tw.map(s => s.cardio?.mins || 0))} / ${CARDIO_WEEK_GOAL} min</b><small>cardio this week</small></div>
+    <div class="tile"><b>${fmtMin(sum(tw.map(s => s.cardio?.mins || 0)))} / ${CARDIO_WEEK_GOAL} min</b><small>cardio this week</small></div>
   </div>
   ${weightCard}${painCard}
   ${ids.length ? `<div class="card"><h3>Am I getting stronger?</h3>
