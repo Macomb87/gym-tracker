@@ -6,7 +6,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const ex = (id, sets, reps) => ({ id, sets, reps });
 
-// Fat loss with a sore shoulder: Push / Pull / Push / Pull / Legs, each followed by 30 min cardio (5 × 30 = 150 min/week).
+// Push / Pull / Push / Pull / Legs, each followed by 30 min cardio (5 × 30 = 150 min/week).
 // Shoulder exercises (sh) are light and high-rep; push and pull days start with one as a rotator-cuff warm-up.
 // Their weight follows the shoulder pain logged last time (see newActiveEx).
 // Goal is to get lean, not big: 2 sets per exercise keep the muscle while dieting, ~30 min of weights.
@@ -15,10 +15,10 @@ const sh = (id, sets, reps) => ({ ...ex(id, sets, reps), sh: true });
 const NEUTRAL_PRESS = 'Dumbbell_Bench_Press_with_Neutral_Grip', PULLDOWN = 'Close-Grip_Front_Lat_Pulldown';
 const DEFAULT_PROGRAM = {
   v: 7, rotateDays: 14, flip: 0,
-  // Mon..Sun → index into days (-1 = no gym). Basketball on Wednesday, Saturday is rest, legs on Sunday
+  // Mon..Sun → index into days (-1 = no gym). Wednesday is free for a sport, Saturday is rest, legs on Sunday
   // (in kid weeks Sunday's legs move to Saturday, see scheduled()).
   week: [0, 1, -1, 0, 1, -1, 2],
-  sports: [{ name: 'Basketball', weekday: 3 }],
+  sports: [], // added in the Program tab
   days: [
     { name: 'Push',
       A: [sh('External_Rotation_with_Cable', 2, '15-20'), sh(NEUTRAL_PRESS, 2, '12-15'), sh('Cable_Crossover', 2, '12-15'), sh('Side_Lateral_Raise', 2, '15-20'), ex('Triceps_Pushdown', 2, '12-15')],
@@ -29,10 +29,10 @@ const DEFAULT_PROGRAM = {
     { name: 'Legs', legs: true,
       A: [ex('Leg_Press', 2, '10-12'), ex('Stiff-Legged_Dumbbell_Deadlift', 2, '10-12'), ex('Dumbbell_Lunges', 2, '10-12'), ex('Lying_Leg_Curls', 2, '10-12'), ex('Standing_Calf_Raises', 2, '12-15')],
       B: [ex('Goblet_Squat', 2, '10-12'), ex('Barbell_Hip_Thrust', 2, '10-12'), ex('Dumbbell_Step_Ups', 2, '10-12'), ex('Seated_Leg_Curl', 2, '10-12'), ex('Leg_Extensions', 2, '12-15')] },
-    { name: 'Cardio', A: [], B: [] }, // not in the week: used when basketball is cancelled or legs have to move
+    { name: 'Cardio', A: [], B: [] }, // not in the week: used when a sport is cancelled or legs have to move
   ],
 };
-const CARDIO_WEEK_GOAL = 150; // minutes; 150–300 min/week of moderate cardio is the usual advice for fatty liver
+const CARDIO_WEEK_GOAL = 150; // minutes; 150–300 min/week of moderate cardio is the usual advice
 const CARDIO = ['Treadmill', 'Bike', 'Elliptical', 'Rower', 'Stairs', 'Walk', 'Other'];
 
 let S = load();
@@ -334,7 +334,7 @@ function progressView() {
   const w = S.weights, f = w[0], l = w.at(-1), lost = f ? r1(f.kg - l.kg) : 0;
   const weightCard = f ? `<div class="card"><h3>⚖️ Body weight</h3>
     <p class="sum">${f.kg} → <b>${l.kg} kg</b> <span class="${lost >= 0 ? 'up' : 'down'}">${lost >= 0 ? '−' : '+'}${Math.abs(lost)} kg (${Math.abs(Math.round(lost / f.kg * 100))}%)</span><br>
-    <small>Goal: −10% = ${r1(f.kg * 0.9)} kg. Losing 7–10% of body weight is what clearly reduces liver fat.</small></p><canvas id="c-bw"></canvas></div>` : '';
+    <small>Goal: −10% = ${r1(f.kg * 0.9)} kg.</small></p><canvas id="c-bw"></canvas></div>` : '';
   const painCard = S.sessions.some(s => s.pain !== undefined)
     ? `<div class="card"><h3>🩹 Shoulder pain <small>0–10, lower is better</small></h3><canvas id="c-pain"></canvas></div>` : '';
   const tw = S.sessions.filter(s => s.date >= wk), lw = S.sessions.filter(s => s.date >= prev && s.date < wk);
