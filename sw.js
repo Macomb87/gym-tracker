@@ -18,6 +18,7 @@ self.addEventListener('fetch', e => {
   if (e.request.url.includes('free-exercise-db')) {
     e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(put)));
   } else if (new URL(e.request.url).origin === location.origin) {
-    e.respondWith(fetch(e.request).then(put).catch(() => caches.match(e.request)));
+    // no-cache: always ask the server, so a new version isn't hidden by GitHub Pages' 10-minute browser cache
+    e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(put).catch(() => caches.match(e.request)));
   }
 });
