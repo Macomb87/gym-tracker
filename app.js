@@ -36,6 +36,7 @@ const CARDIO_WEEK_GOAL = 150; // minutes; 150–300 min/week of moderate cardio 
 const CARDIO = ['Treadmill', 'Bike', 'Elliptical', 'Rower', 'Stairs', 'Walk', 'Other'];
 
 let S = load();
+let avail = 0; // minutes available today, 0 = full workout
 let view = 'today', progVar = 'A', progEx = null, charts = [], pickCb = null;
 
 function load() {
@@ -95,7 +96,17 @@ const isKidDay = () => isKidWeek() && new Date(today() + 'T00:00').getDay() === 
 const trim = (list, short) => short ? list.map(e => ({ ...e, sets: Math.min(2, e.sets) })) : list;
 const estMins = list => Math.round(5 + sum(list.map(e => e.sets)) * 2.5);
 // After weights: 30–45 min (15–20 in kid weeks). Cardio-only days: 45–60 min (40–50 in kid weeks).
-const cardioTarget = (short, only) => only ? (short ? '40–50' : '45–60') : (short ? '15–20' : '30–45');
+// With a time limit (`mins`), cardio gets whatever the weights leave over (at least 10 min).
+const cardioTarget = (short, only, mins = 0, list = []) => mins ? String(only ? mins : Math.max(10, mins - estMins(list)))
+  : only ? (short ? '40–50' : '45–60') : (short ? '15–20' : '30–45');
+// Fit the weights into a time limit, keeping ~1/3 for cardio: first 2 sets per exercise, then drop exercises from the end (arms/abs go first).
+function fit(list, mins) {
+  if (!mins) return list;
+  const budget = mins - Math.max(10, Math.round(mins / 3));
+  if (estMins(list) > budget) list = trim(list, true);
+  while (list.length > 1 && estMins(list) > budget) list = list.slice(0, -1);
+  return list;
+}
 
 function rotation() {
   const p = S.program, d = Math.max(0, daysBetween(p.startDate, today()));
@@ -163,7 +174,7 @@ function render() {
 function todayView() {
   const r = rotation(), p = S.program, pl = plan(), n = pl.day, day = p.days[n];
   const thisWeek = S.sessions.filter(s => s.date >= weekStart(today()));
-  const short = isKidWeek(), list = day ? trim(day[r.variant], short) : [], pain = lastPain();
+  const short = isKidWeek(), list = day ? fit(trim(day[r.variant], short), avail) : [], pain = lastPain();
   const doneToday = S.sessions.filter(s => s.date === today());
   const lw = S.weights.at(-1), fw = S.weights[0], cardioWk = sum(thisWeek.map(s => s.cardio?.mins || 0));
   return `
@@ -182,10 +193,12 @@ function todayView() {
   : `<div class="card">
     <small>Today</small>
     <h2>${esc(day.name)} <span class="tag">${r.variant}</span></h2>
-    ${list.length ? `<p><small>⏱ ~${estMins(list)} min weights + ${cardioTarget(short)} min cardio · 🩹 = shoulder exercise, keep it light</small></p>
+    <div class="row"><small>⏱ Time today</small><select id="avail" style="flex:1;margin:0">${[0, 60, 45, 30].map(m =>
+      `<option value="${m}"${m === avail ? ' selected' : ''}>${m ? `${m} min` : 'Full workout'}</option>`).join('')}</select></div>
+    ${list.length ? `<p><small>⏱ ~${estMins(list)} min weights + ${cardioTarget(short, false, avail, list)} min cardio · 🩹 = shoulder exercise, keep it light</small></p>
     <div class="thumbs">${list.map(e => `<figure><img loading="lazy" crossorigin="anonymous" src="${img(e.id)}" alt="" data-act="info" data-id="${esc(e.id)}">
       <figcaption>${e.sh ? '🩹 ' : ''}${esc(name(e.id))}</figcaption></figure>`).join('')}</div>`
-    : `<p>⏱ ${cardioTarget(short, true)} min easy cardio: incline walk, bike or elliptical. Keep a pace where you can still talk, so you can keep going long enough to burn fat.</p>`}
+    : `<p>⏱ ${cardioTarget(short, true, avail)} min easy cardio: incline walk, bike or elliptical. Keep a pace where you can still talk, so you can keep going long enough to burn fat.</p>`}
     <button class="big" data-act="start" data-day="${n}">Start ${esc(day.name)}</button>
   </div>`}
   <div class="card"><h3>This week</h3>
@@ -227,9 +240,9 @@ function newActiveEx(id, sets, reps, day, isSh) {
 }
 
 function startWorkout(i) {
-  const r = rotation(), day = S.program.days[i], short = isKidWeek();
+  const r = rotation(), day = S.program.days[i], short = isKidWeek(), list = fit(trim(day[r.variant], short), avail);
   S.active = { dayIndex: i, day: day.name, variant: r.variant, start: Date.now(), short, cardio: { type: CARDIO[0], mins: '' }, pain: '',
-    exercises: trim(day[r.variant], short).map(e => newActiveEx(e.id, e.sets, e.reps, day.name, e.sh)) };
+    ct: cardioTarget(short, !list.length, avail, list), exercises: list.map(e => newActiveEx(e.id, e.sets, e.reps, day.name, e.sh)) };
 }
 
 function workoutView() {
@@ -255,7 +268,7 @@ function workoutView() {
   <div class="card" style="margin-top:12px"><h3>🩹 Shoulder pain today <small>0 = none, 10 = worst</small></h3>
     <div class="pain">${Array.from({ length: 11 }, (_, k) => `<button data-act="pain" data-v="${k}" class="${a.pain === k ? 'on' : ''}">${k}</button>`).join('')}</div>
     <small class="note">Next workout's shoulder weights are set from this.</small></div>
-  <div class="card"><h3>🏃 Cardio <small>target ${cardioTarget(a.short, !a.exercises.length)} min</small></h3>
+  <div class="card"><h3>🏃 Cardio <small>target ${a.ct ?? cardioTarget(a.short, !a.exercises.length)} min</small></h3>
     <div class="row"><select id="ctype" style="flex:1;margin:0">${CARDIO.map(c => `<option${c === a.cardio.type ? ' selected' : ''}>${c}</option>`).join('')}</select>
       <input type="number" inputmode="numeric" min="0" id="cmins" value="${a.cardio.mins}" placeholder="min" style="width:80px"></div></div>
   <button class="big" data-act="finish">Finish workout</button>`;
@@ -542,6 +555,7 @@ document.addEventListener('input', ev => {
 document.addEventListener('change', ev => {
   const t = ev.target, p = S.program;
   if (t.id === 'eqf') return pickResults();
+  if (t.id === 'avail') { avail = +t.value; return render(); }
   if (t.id === 'progex') { progEx = t.value; return render(); }
   if (t.id === 'rotdays') { p.rotateDays = Math.max(1, +t.value || 14); save(); return render(); }
   if (t.dataset.wk) { p.week[+t.dataset.wk] = +t.value; return save(); }
