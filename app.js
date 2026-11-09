@@ -274,7 +274,7 @@ function workoutView() {
 // It stores the start time, so it keeps counting with the screen off or the app closed.
 function cardioTimer(a) {
   const c = a.cardio;
-  if (c.t0) { c.mins = (+c.mins || 0) + Math.round((Date.now() - c.t0) / 60000); delete c.t0; }
+  if (c.t0) { c.mins = (+c.mins || 0) + Math.max(1, Math.round((Date.now() - c.t0) / 60000)); delete c.t0; }
   else c.t0 = Date.now();
 }
 const mmss = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
