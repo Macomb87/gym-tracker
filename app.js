@@ -6,37 +6,35 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const ex = (id, sets, reps) => ({ id, sets, reps });
 
-// Fat loss with a sore shoulder: 3 strength days + 3 cardio days.
-// Shoulder exercises (sh) are light and high-rep; the first one of each day doubles as a rotator-cuff warm-up.
+// Fat loss with a sore shoulder: Push / Pull / Push / Pull / Legs, each followed by 30 min cardio (5 × 30 = 150 min/week).
+// Shoulder exercises (sh) are light and high-rep; push and pull days start with one as a rotator-cuff warm-up.
 // Their weight follows the shoulder pain logged last time (see newActiveEx).
-// Every strength day ends with an arm exercise and abs. Exercises and their order change every rotation block (A/B).
+// Goal is to get lean, not big: 2 sets per exercise keep the muscle while dieting, ~30 min of weights.
+// Exercises and their order change every rotation block (A/B).
 const sh = (id, sets, reps) => ({ ...ex(id, sets, reps), sh: true });
 const NEUTRAL_PRESS = 'Dumbbell_Bench_Press_with_Neutral_Grip', PULLDOWN = 'Close-Grip_Front_Lat_Pulldown';
 const DEFAULT_PROGRAM = {
-  v: 4, rotateDays: 14, flip: 0,
-  // Mon..Sun → index into days (-1 = no gym). Basketball on Wednesday, so Mon/Tue have no legs; Saturday is rest.
-  week: [4, 1, -1, 0, 3, -1, 2],
+  v: 6, rotateDays: 14, flip: 0,
+  // Mon..Sun → index into days (-1 = no gym). Basketball on Wednesday, legs on Saturday, Sunday is rest.
+  week: [0, 1, -1, 0, 1, 2, -1],
   sports: [{ name: 'Basketball', weekday: 3 }],
   days: [
-    { name: 'Strength A', legs: true,
-      A: [sh('External_Rotation_with_Cable', 2, '15-20'), ex('Leg_Press', 3, '10-12'), sh(NEUTRAL_PRESS, 3, '12-15'), ex('Seated_Cable_Rows', 3, '12-15'), ex('Lying_Leg_Curls', 3, '10-12'), ex('Dumbbell_Bicep_Curl', 3, '10-12'), ex('Reverse_Crunch', 3, '12-15')],
-      B: [sh('Face_Pull', 2, '15-20'), ex('Leg_Press', 3, '10-12'), ex('One-Arm_Dumbbell_Row', 3, '10-12'), sh(NEUTRAL_PRESS, 3, '12-15'), ex('Dumbbell_Step_Ups', 3, '10-12'), ex('EZ-Bar_Curl', 3, '10-12'), ex('Russian_Twist', 3, '20')] },
-    { name: 'Cardio', A: [], B: [] },
-    { name: 'Strength B', legs: true,
-      A: [sh('Band_Pull_Apart', 2, '15-20'), ex('Dumbbell_Lunges', 3, '10-12'), sh(PULLDOWN, 3, '12-15'), ex('Stiff-Legged_Dumbbell_Deadlift', 3, '10-12'), sh('Side_Lateral_Raise', 3, '15-20'), ex('Triceps_Pushdown', 3, '12-15'), ex('Crunches', 3, '15-20')],
-      B: [sh('Cable_Internal_Rotation', 2, '15-20'), ex('Barbell_Hip_Thrust', 3, '10-12'), sh(PULLDOWN, 3, '12-15'), ex('Leg_Extensions', 3, '12-15'), ex('Seated_Leg_Curl', 3, '10-12'), ex('Tricep_Dumbbell_Kickback', 3, '12-15'), ex('Seated_Leg_Tucks', 3, '12-15')] },
-    { name: 'Cardio', A: [], B: [] },
-    { name: 'Strength C', // light on legs, so it fits before basketball / soccer
-      A: [sh('External_Rotation_with_Cable', 2, '15-20'), ex('Seated_Cable_Rows', 3, '12-15'), sh(NEUTRAL_PRESS, 3, '12-15'), sh('Face_Pull', 3, '15-20'), ex('Hammer_Curls', 3, '10-12'), ex('Triceps_Pushdown_-_Rope_Attachment', 3, '12-15'), ex('Oblique_Crunches_-_On_The_Floor', 3, '15-20')],
-      B: [sh('Band_Pull_Apart', 2, '15-20'), ex('One-Arm_Dumbbell_Row', 3, '10-12'), sh(PULLDOWN, 3, '12-15'), sh('Side_Lateral_Raise', 3, '15-20'), ex('Standing_Biceps_Cable_Curl', 3, '10-12'), ex('Triceps_Pushdown', 3, '12-15'), ex('Reverse_Crunch', 3, '12-15')] },
-    { name: 'Cardio', A: [], B: [] },
+    { name: 'Push',
+      A: [sh('External_Rotation_with_Cable', 2, '15-20'), sh(NEUTRAL_PRESS, 2, '12-15'), sh('Cable_Crossover', 2, '12-15'), sh('Side_Lateral_Raise', 2, '15-20'), ex('Triceps_Pushdown', 2, '12-15')],
+      B: [sh('Cable_Internal_Rotation', 2, '15-20'), sh('Leverage_Chest_Press', 2, '10-12'), sh('Butterfly', 2, '12-15'), sh('Side_Lateral_Raise', 2, '15-20'), ex('Triceps_Pushdown_-_Rope_Attachment', 2, '12-15')] },
+    { name: 'Pull',
+      A: [sh('Face_Pull', 2, '15-20'), sh(PULLDOWN, 2, '12-15'), ex('Seated_Cable_Rows', 2, '12-15'), ex('Straight-Arm_Pulldown', 2, '12-15'), ex('Hammer_Curls', 2, '10-12')],
+      B: [sh('Band_Pull_Apart', 2, '15-20'), sh(PULLDOWN, 2, '12-15'), ex('One-Arm_Dumbbell_Row', 2, '10-12'), sh('Reverse_Flyes', 2, '15-20'), ex('Standing_Biceps_Cable_Curl', 2, '10-12')] },
+    { name: 'Legs', legs: true,
+      A: [ex('Leg_Press', 2, '10-12'), ex('Stiff-Legged_Dumbbell_Deadlift', 2, '10-12'), ex('Dumbbell_Lunges', 2, '10-12'), ex('Lying_Leg_Curls', 2, '10-12'), ex('Standing_Calf_Raises', 2, '12-15')],
+      B: [ex('Goblet_Squat', 2, '10-12'), ex('Barbell_Hip_Thrust', 2, '10-12'), ex('Dumbbell_Step_Ups', 2, '10-12'), ex('Seated_Leg_Curl', 2, '10-12'), ex('Leg_Extensions', 2, '12-15')] },
+    { name: 'Cardio', A: [], B: [] }, // not in the week: used when basketball is cancelled or legs have to move
   ],
 };
 const CARDIO_WEEK_GOAL = 150; // minutes; 150–300 min/week of moderate cardio is the usual advice for fatty liver
 const CARDIO = ['Treadmill', 'Bike', 'Elliptical', 'Rower', 'Stairs', 'Walk', 'Other'];
 
 let S = load();
-let avail = 0; // minutes available today, 0 = full workout
 let view = 'today', progVar = 'A', progEx = null, charts = [], pickCb = null;
 
 function load() {
@@ -46,8 +44,9 @@ function load() {
 function withDefaults(s) {
   // Older saved programs (bodybuilding split) get the new program; settings and history stay.
   if ((s.program.v || 1) < DEFAULT_PROGRAM.v) {
-    const { startDate, sports, sportBuffer, kid, week } = s.program;
-    s.program = { ...structuredClone(DEFAULT_PROGRAM), startDate, sportBuffer, kid, ...(sports && { sports }), ...(week && { week }) };
+    // The old weekly schedule pointed at the old days, so it's replaced too.
+    const { startDate, sports, sportBuffer, kid } = s.program;
+    s.program = { ...structuredClone(DEFAULT_PROGRAM), startDate, sportBuffer, kid, ...(sports && { sports }) };
   }
   s.weights ??= [];
   const p = s.program;
@@ -86,7 +85,7 @@ function lastSets(id, day) {
   return find(true) || find(false);
 }
 
-// Every second week (counted from the anchor week) is a kid week: no Sunday, ~60 min visits.
+// Every second week (counted from the anchor week) is a kid week: no gym on Sunday.
 function isKidWeek(ds = today()) {
   const k = S.program.kid;
   return k.on && !!k.anchor && (daysBetween(k.anchor, weekStart(ds)) / 7) % 2 === 0;
@@ -95,18 +94,8 @@ const isKidDay = () => isKidWeek() && new Date(today() + 'T00:00').getDay() === 
 // Weights only (cardio comes after): kid weeks keep every exercise but only 2 sets each.
 const trim = (list, short) => short ? list.map(e => ({ ...e, sets: Math.min(2, e.sets) })) : list;
 const estMins = list => Math.round(5 + sum(list.map(e => e.sets)) * 2.5);
-// After weights: 30–45 min (15–20 in kid weeks). Cardio-only days: 45–60 min (40–50 in kid weeks).
-// With a time limit (`mins`), cardio gets whatever the weights leave over (at least 10 min).
-const cardioTarget = (short, only, mins = 0, list = []) => mins ? String(only ? mins : Math.max(10, mins - estMins(list)))
-  : only ? (short ? '40–50' : '45–60') : (short ? '15–20' : '30–45');
-// Fit the weights into a time limit, keeping ~1/3 for cardio: first 2 sets per exercise, then drop exercises from the end (arms/abs go first).
-function fit(list, mins) {
-  if (!mins) return list;
-  const budget = mins - Math.max(10, Math.round(mins / 3));
-  if (estMins(list) > budget) list = trim(list, true);
-  while (list.length > 1 && estMins(list) > budget) list = list.slice(0, -1);
-  return list;
-}
+// Fixed: 30 min after weights, 45 min on cardio-only days, so no visit is longer than ~1 h.
+const cardioTarget = only => only ? '45' : '30';
 
 function rotation() {
   const p = S.program, d = Math.max(0, daysBetween(p.startDate, today()));
@@ -174,13 +163,13 @@ function render() {
 function todayView() {
   const r = rotation(), p = S.program, pl = plan(), n = pl.day, day = p.days[n];
   const thisWeek = S.sessions.filter(s => s.date >= weekStart(today()));
-  const short = isKidWeek(), list = day ? fit(trim(day[r.variant], short), avail) : [], pain = lastPain();
+  const short = isKidWeek(), list = day ? trim(day[r.variant], short) : [], pain = lastPain();
   const doneToday = S.sessions.filter(s => s.date === today());
   const lw = S.weights.at(-1), fw = S.weights[0], cardioWk = sum(thisWeek.map(s => s.cardio?.mins || 0));
   return `
   <div class="card rot"><div><b>Variant ${r.variant}</b> · block ${r.block}</div>
     <small>Switches to ${r.variant === 'A' ? 'B' : 'A'} in ${r.left} day${r.left === 1 ? '' : 's'}</small></div>
-  ${short && !isKidDay() ? `<div class="card sport">👨‍👧 <b>Kid week</b>: short workouts (2 sets per exercise) so you're done in ~60 min.</div>` : ''}
+  ${short && !isKidDay() ? `<div class="card sport">👨‍👧 <b>Kid week</b>: no gym on Sunday.</div>` : ''}
   ${pl.sport && pl.sport.inDays > 0 ? `<div class="card sport">🏅 <b>${esc(pl.sport.name)} ${when(pl.sport.inDays)}</b> · no leg training until after it.
     ${pl.skipped !== null ? `<br><small>${esc(p.days[pl.skipped].name)} moved, doing ${esc(day.name)} instead.</small>` : ''}</div>` : ''}
   ${pain >= 6 ? `<div class="card sport">🩹 <b>Shoulder pain was ${pain}/10</b> last time. Skip the 🩹 exercises today and get the shoulder checked by a physio.</div>`
@@ -189,16 +178,15 @@ function todayView() {
     <small>Great work. See the week below for what's next.</small></div>`
   : pl.rest ? `<div class="card"><small>Today</small>
     <h2>${pl.rest === 'kid' ? '👨‍👧 Kid day' : pl.sport?.inDays === 0 ? `🏅 ${esc(pl.sport.name)}` : '😴 Rest day'}</h2>
-    <small>No gym today.${pl.rest === 'kid' ? ' Enjoy the day!' : pl.sport?.inDays === 0 ? ' Have a good game, it counts as hard cardio.' : ''}</small></div>`
+    <small>No gym today.${pl.rest === 'kid' ? ' Enjoy the day!' : pl.sport?.inDays === 0 ? ' Have a good game, it counts as hard cardio.' : ''}</small>
+    ${pl.rest !== 'kid' && pl.sport?.inDays === 0 ? `<button class="ghost" data-act="start" data-day="${p.days.findIndex(d => !d.A.length)}">${esc(pl.sport.name)} cancelled? Do ${cardioTarget(true)} min cardio instead</button>` : ''}</div>`
   : `<div class="card">
     <small>Today</small>
     <h2>${esc(day.name)} <span class="tag">${r.variant}</span></h2>
-    <div class="row"><small>⏱ Time today</small><select id="avail" style="flex:1;margin:0">${[0, 60, 45, 30].map(m =>
-      `<option value="${m}"${m === avail ? ' selected' : ''}>${m ? `${m} min` : 'Full workout'}</option>`).join('')}</select></div>
-    ${list.length ? `<p><small>⏱ ~${estMins(list)} min weights + ${cardioTarget(short, false, avail, list)} min cardio · 🩹 = shoulder exercise, keep it light</small></p>
+    ${list.length ? `<p><small>⏱ ~${estMins(list)} min weights + ${cardioTarget(false)} min cardio · 🩹 = shoulder exercise, keep it light</small></p>
     <div class="thumbs">${list.map(e => `<figure><img loading="lazy" crossorigin="anonymous" src="${img(e.id)}" alt="" data-act="info" data-id="${esc(e.id)}">
       <figcaption>${e.sh ? '🩹 ' : ''}${esc(name(e.id))}</figcaption></figure>`).join('')}</div>`
-    : `<p>⏱ ${cardioTarget(short, true, avail)} min easy cardio: incline walk, bike or elliptical. Keep a pace where you can still talk, so you can keep going long enough to burn fat.</p>`}
+    : `<p>⏱ ${cardioTarget(true)} min easy cardio: incline walk, bike or elliptical. Keep a pace where you can still talk, so you can keep going long enough to burn fat.</p>`}
     <button class="big" data-act="start" data-day="${n}">Start ${esc(day.name)}</button>
   </div>`}
   <div class="card"><h3>This week</h3>
@@ -240,9 +228,9 @@ function newActiveEx(id, sets, reps, day, isSh) {
 }
 
 function startWorkout(i) {
-  const r = rotation(), day = S.program.days[i], short = isKidWeek(), list = fit(trim(day[r.variant], short), avail);
+  const r = rotation(), day = S.program.days[i], short = isKidWeek();
   S.active = { dayIndex: i, day: day.name, variant: r.variant, start: Date.now(), short, cardio: { type: CARDIO[0], mins: '' }, pain: '',
-    ct: cardioTarget(short, !list.length, avail, list), exercises: list.map(e => newActiveEx(e.id, e.sets, e.reps, day.name, e.sh)) };
+    exercises: trim(day[r.variant], short).map(e => newActiveEx(e.id, e.sets, e.reps, day.name, e.sh)) };
 }
 
 function workoutView() {
@@ -268,7 +256,7 @@ function workoutView() {
   <div class="card" style="margin-top:12px"><h3>🩹 Shoulder pain today <small>0 = none, 10 = worst</small></h3>
     <div class="pain">${Array.from({ length: 11 }, (_, k) => `<button data-act="pain" data-v="${k}" class="${a.pain === k ? 'on' : ''}">${k}</button>`).join('')}</div>
     <small class="note">Next workout's shoulder weights are set from this.</small></div>
-  <div class="card"><h3>🏃 Cardio <small>target ${a.ct ?? cardioTarget(a.short, !a.exercises.length)} min</small></h3>
+  <div class="card"><h3>🏃 Cardio <small>target ${cardioTarget(!a.exercises.length)} min</small></h3>
     <div class="row"><select id="ctype" style="flex:1;margin:0">${CARDIO.map(c => `<option${c === a.cardio.type ? ' selected' : ''}>${c}</option>`).join('')}</select>
       <input type="number" inputmode="numeric" min="0" id="cmins" value="${a.cardio.mins}" placeholder="min" style="width:80px"></div></div>
   <button class="big" data-act="finish">Finish workout</button>`;
@@ -406,13 +394,13 @@ function programView() {
     <p>Now on <b>variant ${r.variant}</b> · switches in ${r.left} day${r.left === 1 ? '' : 's'}.</p>
     <label>Switch every <input type="number" min="1" id="rotdays" value="${p.rotateDays}"> days</label>
     <div class="row"><button class="ghost sm" data-act="flip">Switch to ${r.variant === 'A' ? 'B' : 'A'} now</button></div>
-    <small class="note">Each strength day starts with a light 🩹 shoulder warm-up. Exercises and their order change between variants so your body keeps adapting.</small></div>
+    <small class="note">Push and pull days start with a light 🩹 shoulder warm-up. Exercises and their order change between variants so your body keeps adapting.</small></div>
   <div class="seg">${['A', 'B'].map(v => `<button data-act="pvar" data-v="${v}" class="${progVar === v ? 'on' : ''}">Variant ${v}</button>`).join('')}</div>
   <div class="card"><h3>Weekly schedule</h3>
     ${DAY_SHORT.map((label, k) => `<div class="wk-row" style="grid-template-columns:44px 1fr;align-items:center"><b>${label}</b>
       <select data-wk="${k}" style="margin:0"><option value="-1">Rest / no gym</option>${p.days.map((d, i) => p.days.findIndex(x => x.name === d.name) !== i ? ''
         : `<option value="${i}"${p.days[p.week[k]]?.name === d.name ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>`).join('')}
-    <small class="note">Keep leg days (Strength A / B) away from the 2 days before your sport. If a match moves, the app swaps the leg day for you. In kid weeks Sunday's workout moves to Saturday if Saturday is a rest day.</small></div>
+    <small class="note">Keep Legs away from the 2 days before your sport. If a match moves, the app swaps the leg day for you. In kid weeks Sunday's workout moves to Saturday if Saturday is a rest day.</small></div>
   <div class="card"><h3>Sports & other activities</h3>
     ${p.sports.map((sp, k) => `<div class="prog-ex"><div class="grow"><b>${esc(sp.name)}</b>
       <small>${sp.date ? fmtDate(sp.date) : `every ${WEEKDAYS[sp.weekday]}`}</small></div>
@@ -426,7 +414,7 @@ function programView() {
     <label><input type="checkbox" id="kidon"${p.kid.on ? ' checked' : ''}> I have my kid every second week</label>
     ${p.kid.on ? `<select id="kidthis" style="margin-top:8px"><option value="0"${isKidWeek() ? ' selected' : ''}>This week is a kid week</option>
       <option value="7"${p.kid.anchor && !isKidWeek() ? ' selected' : ''}>Next week is a kid week</option></select>` : ''}
-    <small class="note">Kid weeks: no gym on Sunday, and workouts are trimmed to 2 sets per exercise + 15–20 min cardio, so you're done in ~60 min.</small></div>
+    <small class="note">Kid weeks: no gym on Sunday.</small></div>
   ${p.days.map((d, di) => `<div class="card"><input class="dayname" data-dn="${di}" value="${esc(d.name)}">
     <label class="note"><input type="checkbox" data-legs="${di}"${d.legs ? ' checked' : ''}> Heavy on legs (keep away from sports)</label>
     ${d[progVar].map((e, ei) => `<div class="prog-ex">
@@ -554,9 +542,7 @@ document.addEventListener('input', ev => {
 
 document.addEventListener('change', ev => {
   const t = ev.target, p = S.program;
-  if (t.id === 'eqf') return pickResults();
-  if (t.id === 'avail') { avail = +t.value; return render(); }
-  if (t.id === 'progex') { progEx = t.value; return render(); }
+  if (t.id === 'eqf') return pickResults();  if (t.id === 'progex') { progEx = t.value; return render(); }
   if (t.id === 'rotdays') { p.rotateDays = Math.max(1, +t.value || 14); save(); return render(); }
   if (t.dataset.wk) { p.week[+t.dataset.wk] = +t.value; return save(); }
   if (t.id === 'ctype') { S.active.cardio.type = t.value; return save(); }
