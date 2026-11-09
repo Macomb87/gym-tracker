@@ -263,12 +263,26 @@ function workoutView() {
     <small class="note">Next workout's shoulder weights are set from this.</small></div>
   <div class="card"><h3>🏃 Cardio <small>target ${cardioTarget(!a.exercises.length)} min</small></h3>
     <div class="row"><select id="ctype" style="flex:1;margin:0">${CARDIO.map(c => `<option${c === a.cardio.type ? ' selected' : ''}>${c}</option>`).join('')}</select>
-      <input type="number" inputmode="numeric" min="0" id="cmins" value="${a.cardio.mins}" placeholder="min" style="width:80px"></div></div>
+      <input type="number" inputmode="numeric" min="0" id="cmins" value="${a.cardio.mins}" placeholder="min" style="width:80px"></div>
+    <div class="row" style="margin-top:8px;align-items:center">
+      ${a.cardio.t0 ? `<b id="ctime" style="flex:1;font-size:1.6em">${mmss(Date.now() - a.cardio.t0)}</b>` : `<small class="note" style="flex:1">Stopwatch: the minutes are added when you stop it.</small>`}
+      <button data-act="ctimer">${a.cardio.t0 ? '■ Stop' : '▶ Start'}</button></div></div>
   <button class="big" data-act="finish">Finish workout</button>`;
 }
 
+// Cardio stopwatch: stopping adds the elapsed minutes to the cardio minutes.
+// It stores the start time, so it keeps counting with the screen off or the app closed.
+function cardioTimer(a) {
+  const c = a.cardio;
+  if (c.t0) { c.mins = (+c.mins || 0) + Math.round((Date.now() - c.t0) / 60000); delete c.t0; }
+  else c.t0 = Date.now();
+}
+const mmss = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+setInterval(() => { const el = $('#ctime'); if (el && S.active?.cardio.t0) el.textContent = mmss(Date.now() - S.active.cardio.t0); }, 1000);
+
 function finishWorkout() {
   const a = S.active;
+  if (a.cardio.t0) cardioTimer(a); // still running: count it
   const exercises = a.exercises
     .map(e => ({ id: e.id, sets: e.sets.filter(x => x.done && x.reps > 0).map(x => ({ kg: +x.kg || 0, reps: +x.reps })) }))
     .filter(e => e.sets.length);
@@ -506,6 +520,7 @@ document.addEventListener('click', ev => {
     case 'rmex': return ask(`Remove ${name(a.exercises[e].id)} from this workout?`, () => a.exercises.splice(e, 1));
     case 'addex': return openPicker(pid => { S.active.exercises.push(newActiveEx(pid, 3, '8-12', S.active.day)); });
     case 'pain': a.pain = +b.dataset.v; break;
+    case 'ctimer': cardioTimer(a); break;
     case 'bw': {
       const kg = +$('#bw').value;
       if (!kg) return toast('Enter your weight');
